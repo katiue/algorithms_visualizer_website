@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import api from "@/components/api"
 
-type CellType = 'empty' | 'wall' | 'start' | 'goal'
+type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
 
 interface Cell {
   type: CellType
@@ -16,30 +16,115 @@ interface Cell {
 
 const transformGrid = (grid: Cell[][]) => {
   let newGrid: number[][] = Array(grid[0].length).fill(null).map(() => Array(grid.length).fill(0))
-  const newmap = grid.map(row => row.map(cell => {
+  grid.map(row => row.map(cell => {
     if (cell.type === 'wall') {
       newGrid[cell.y][cell.x] = 1
     }}))
-  return([newGrid])
+  return(newGrid)
 }
+
+const getGoalState = (goalCell: Cell[]) => {
+  let goalState: number[][] = Array(goalCell.length).fill(null).map(() => Array(2).fill(0))
+  goalCell.map((cell, index) => {
+    goalState[index] = [cell.x, cell.y]
+  })
+  return(goalState)
+}
+
+const moveTranslator = (initialpos: number[],move: string[]) => {
+  let moveList: number[][] = []
+  let pos = initialpos
+  move.map((m) => {
+    if(m === "UP")
+      pos = [pos[0],pos[1]-1]
+    if(m === "DOWN")
+      pos = [pos[0],pos[1]+1]
+    if(m === "LEFT")
+      pos = [pos[0]-1,pos[1]]
+    if(m === "RIGHT")
+      pos = [pos[0]+1,pos[1]]
+    moveList.push(pos)
+  })
+  return moveList
+}
+
 
 export default function PathFinder() {
   const [currentType, setCurrentType] = useState<CellType>('wall')
   const [algorithm, setAlgorithm] = useState<string>('bfs')
   const [startCell, setStartCell] = useState<Cell | null>(null)
-  const [goalCell, setGoalCell] = useState<Cell[] | null>(null)
+  const [goalCell, setGoalCell] = useState<Cell[]>([])
   const [sizex, setSizeX] = useState<number>(0)
   const [sizey, setSizeY] = useState<number>(0)
   const [grid, setGrid] = useState<Cell[][]>([])
+  const [result, setResult] = useState<string[]>([])
+  const [totalNodes, setTotalNodes] = useState<number>(0)
+  const [traversedNodes, setTraversedNodes] = useState<number[][]>([])
+  const [delay, setDelay] = useState(200);
+  const [drawPath, setDrawPath] = useState(false);
 
-  const getResult = async () => {
-    const response = await api.post('/getResult',{
-      initialstate: [startCell?.x, startCell?.y],
-      goalstate: [startCell?.x, startCell?.y],
-      grid: transformGrid(grid),
-    })
-    console.log(response.data)
-  }
+  useEffect(() => {
+    if (traversedNodes.length > 0) {
+      let currentIndex = 0;
+  
+      const intervalId = setInterval(() => {
+        // Process the current node
+        if (currentIndex < traversedNodes.length) {
+          const node = traversedNodes[currentIndex];
+          setGrid(prevGrid => {
+            const newGrid = [...prevGrid];
+            const cell = newGrid[node[1]][node[0]];
+  
+            // Update cell type
+            if (cell.type === 'empty') {
+              cell.type = 'path';
+            }
+            return newGrid;
+          });
+  
+          currentIndex++; // Increment the current index
+        } else {
+          setDrawPath(true);
+          clearInterval(intervalId); // Clear the interval once all nodes are processed
+        }
+      }, delay);
+      return () => 
+      {
+        setDrawPath(true);
+        clearInterval(intervalId);
+      }}}, [drawPath])
+
+  const drawNodes = () =>{
+  
+    if (traversedNodes.length > 0) {
+      let currentIndex = 0;
+  
+      const intervalId = setInterval(() => {
+        // Process the current node
+        if (currentIndex < traversedNodes.length) {
+          const node = traversedNodes[currentIndex];
+          setGrid(prevGrid => {
+            const newGrid = [...prevGrid];
+            const cell = newGrid[node[1]][node[0]];
+  
+            // Update cell type
+            if (cell.type === 'empty') {
+              cell.type = 'traversed';
+            }
+            return newGrid;
+          });
+  
+          currentIndex++; // Increment the current index
+        } else {
+          setDrawPath(true);
+          clearInterval(intervalId); // Clear the interval once all nodes are processed
+        }
+      }, delay);
+      return () => 
+      {
+        setDrawPath(true);
+        clearInterval(intervalId);
+      }}}
 
   useEffect(() => {
     const newGrid = Array(Math.max(sizex,4)).fill(null).map((_, x) =>
@@ -58,18 +143,23 @@ export default function PathFinder() {
         if(cell.type === 'start'){
           cell.type = 'empty'
           setStartCell(null)
-        } else if (startCell) {
-          startCell.type = 'empty'
+        } else {
+          if (startCell) {
+            startCell.type = 'empty'
+          }
           setStartCell(cell)
           cell.type = 'start'
-        }
-      } else if(cell.type !== 'start'){
-        if (currentType === 'wall' && cell.type === 'wall') {
+        } 
+      } else {
+        if(currentType === cell.type){
+          if (currentType === 'goal') {
+            setGoalCell(goalCell ? goalCell.filter(cell => !(cell.x === x && cell.y === y)) : [])
+          }
           cell.type = 'empty'
-        } else if(cell.type === 'goal' && cell.type === 'goal'){
-          cell.type = 'empty'
-        }
-        else{
+        } else {
+          if (currentType === 'goal') {
+            setGoalCell([...(goalCell || []), { x, y, type: 'goal' }])
+          }
           cell.type = currentType
         }
       }
@@ -78,10 +168,27 @@ export default function PathFinder() {
   }
 
   const handleStart = () => {
-    // Implement your path-finding algorithm here
-    console.log(`Starting ${algorithm} algorithm`)
+    const getResult = async () => {
+      const response = await api.post('/getResult',{
+        algorithm: algorithm,
+        initialstate: [startCell?.y, startCell?.x],
+        goalstate: getGoalState(goalCell),
+        grid: transformGrid(grid)
+      })
+      if (response.status === 200) {
+        setResult(response.data.path)
+        setTotalNodes(response.data.totalNodes)
+        setTraversedNodes(response.data.traversed)
+        if (startCell)
+          moveTranslator([startCell.y, startCell.x], response.data.path);
+        drawNodes()
+        }
+      else {
+        alert('Error' + response.data)
+    }
   }
-
+  getResult()
+  }
   return (
     <div className="flex flex-col items-center p-4 space-y-4">
       {/* Button bar */}
@@ -147,7 +254,9 @@ export default function PathFinder() {
               className={`w-6 h-6 border border-gray-200 cursor-pointer ${
                 cell.type === 'wall' ? 'bg-gray-500' :
                 cell.type === 'goal' ? 'bg-green-500' :
-                cell.type === 'start' ? 'bg-red-500' : ''
+                cell.type === 'start' ? 'bg-red-500' : 
+                cell.type === 'traversed' ? 'bg-blue-500' : 
+                cell.type === 'path' ? 'bg-yellow-500' : ''
               }`}
               onClick={() => handleCellClick(x, y)}
             />
