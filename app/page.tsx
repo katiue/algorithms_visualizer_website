@@ -14,16 +14,30 @@ interface Cell {
   y: number
 }
 
+const transformGrid = (grid: Cell[][]) => {
+  let newGrid: number[][] = Array(grid[0].length).fill(null).map(() => Array(grid.length).fill(0))
+  const newmap = grid.map(row => row.map(cell => {
+    if (cell.type === 'wall') {
+      newGrid[cell.y][cell.x] = 1
+    }}))
+  return([newGrid])
+}
+
 export default function PathFinder() {
   const [currentType, setCurrentType] = useState<CellType>('wall')
   const [algorithm, setAlgorithm] = useState<string>('bfs')
   const [startCell, setStartCell] = useState<Cell | null>(null)
+  const [goalCell, setGoalCell] = useState<Cell[] | null>(null)
   const [sizex, setSizeX] = useState<number>(0)
   const [sizey, setSizeY] = useState<number>(0)
   const [grid, setGrid] = useState<Cell[][]>([])
 
   const getResult = async () => {
-    const response = await api.post('/getResult')
+    const response = await api.post('/getResult',{
+      initialstate: [startCell?.x, startCell?.y],
+      goalstate: [startCell?.x, startCell?.y],
+      grid: transformGrid(grid),
+    })
     console.log(response.data)
   }
 
@@ -41,11 +55,13 @@ export default function PathFinder() {
 
       if (currentType === 'start') {
         // Remove previous start cell if exists
-        if (startCell) {
+        if(cell.type === 'start'){
+          cell.type = 'empty'
+        } else if (startCell) {
           startCell.type = 'empty'
+          setStartCell(cell)
+          cell.type = 'start'
         }
-        setStartCell(cell)
-        cell.type = 'start'
       } else if(cell.type !== 'start'){
         if (currentType === 'wall' && cell.type === 'wall') {
           cell.type = 'empty'
