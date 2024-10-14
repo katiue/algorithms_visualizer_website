@@ -57,6 +57,7 @@ export default function PathFinder() {
         // Remove previous start cell if exists
         if(cell.type === 'start'){
           cell.type = 'empty'
+          setStartCell(null)
         } else if (startCell) {
           startCell.type = 'empty'
           setStartCell(cell)
