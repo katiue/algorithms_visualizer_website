@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import api from "@/components/api"
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal'
 
@@ -12,17 +14,25 @@ interface Cell {
   y: number
 }
 
-const GRID_SIZE = 20
-
 export default function PathFinder() {
-  const [grid, setGrid] = useState<Cell[][]>(() =>
-    Array(GRID_SIZE).fill(null).map((_, y) =>
-      Array(GRID_SIZE).fill(null).map((_, x) => ({ type: 'empty', x, y }))
-    )
-  )
   const [currentType, setCurrentType] = useState<CellType>('wall')
   const [algorithm, setAlgorithm] = useState<string>('bfs')
   const [startCell, setStartCell] = useState<Cell | null>(null)
+  const [sizex, setSizeX] = useState<number>(0)
+  const [sizey, setSizeY] = useState<number>(0)
+  const [grid, setGrid] = useState<Cell[][]>([])
+
+  const getResult = async () => {
+    const response = await api.post('/getResult')
+    console.log(response.data)
+  }
+
+  useEffect(() => {
+    const newGrid = Array(Math.max(sizex,4)).fill(null).map((_, x) =>
+      Array(Math.max(sizey,4)).fill(null).map((_, y) => ({ type: 'empty' as CellType, x, y }))
+    )
+    setGrid(newGrid)
+  }, [sizex, sizey])
 
   const handleCellClick = (x: number, y: number) => {
     setGrid(prevGrid => {
@@ -36,14 +46,16 @@ export default function PathFinder() {
         }
         setStartCell(cell)
         cell.type = 'start'
-      } else if (currentType === 'wall' && cell.type === 'wall') {
-        // Toggle wall off
-        cell.type = 'empty'
-      } else {
-        // Don't overwrite start cell
-        cell.type = currentType
+      } else if(cell.type !== 'start'){
+        if (currentType === 'wall' && cell.type === 'wall') {
+          cell.type = 'empty'
+        } else if(cell.type === 'goal' && cell.type === 'goal'){
+          cell.type = 'empty'
+        }
+        else{
+          cell.type = currentType
+        }
       }
-      console.log(cell)
       return newGrid
     })
   }
@@ -55,6 +67,7 @@ export default function PathFinder() {
 
   return (
     <div className="flex flex-col items-center p-4 space-y-4">
+      {/* Button bar */}
       <div className="flex space-x-4 mb-4">
         <Button
           onClick={() => setCurrentType('wall')}
@@ -75,8 +88,40 @@ export default function PathFinder() {
           Start
         </Button>
       </div>
+      <div className='flex gap-5'>
+        {/* Size input */}
+        <div>
+          <h2>X size:</h2>
+          <Input
+            type="number"
+            onChange = {(e) => setSizeX(Number(e.target.value))}
+            />
+          <h2>Y size:</h2>
+          <Input
+            type="number"
+            onChange = {(e) => setSizeY(Number(e.target.value))}
+            />
+        </div>
 
-      <div className="grid grid-cols-20 gap-0 border border-gray-300">
+        <div className="flex flex-col items-center space-y-5 justify-end">
+          <Select value={algorithm} onValueChange={setAlgorithm}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select algorithm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bfs">Breadth-First Search</SelectItem>
+              <SelectItem value="dfs">Depth-First Search</SelectItem>
+              <SelectItem value="astar">A* Search</SelectItem>
+              <SelectItem value="gbfs">Greedy Best-First Search</SelectItem>
+              <SelectItem value="dfsb">DFS Bidirectioinal Search</SelectItem>
+              <SelectItem value="ida">IDA* Search</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button onClick={handleStart} className='w-full'>Start</Button>
+        </div>
+      </div>
+      <div className="grid gap-0 border border-gray-300">
         {grid.map((row, y) =>
         <div key={y} className="flex">
           {row.map((cell, x) => (
@@ -94,20 +139,6 @@ export default function PathFinder() {
         )}
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Select value={algorithm} onValueChange={setAlgorithm}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select algorithm" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="bfs">Breadth-First Search</SelectItem>
-            <SelectItem value="dfs">Depth-First Search</SelectItem>
-            <SelectItem value="astar">A* Search</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button onClick={handleStart}>Start</Button>
-      </div>
     </div>
   )
 }
