@@ -6,6 +6,7 @@ import api from "@/components/api"
 import ResultBar from '@/components/result_bar'
 import ToolsBar from '@/components/toolsBar'
 import PredefinedMap from '@/components/predefinedMaps'
+import GridUploader from '@/components/uploadFile'
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
 
@@ -340,7 +341,18 @@ export default function PathFinder() {
           )}
         </div>
       </div>
-      <PredefinedMap onMapClick={onMapClick} />
+      <div>
+      <GridUploader 
+        setGrid={setGrid} 
+        setRows={setSizeY} 
+        setColumns={setSizeX} 
+        setGoalCell={setGoalCell} 
+        setStartCell={setStartCell} 
+      />
+      <PredefinedMap 
+        onMapClick={onMapClick} 
+        />
+        </div>
     </div>
   )
 }
