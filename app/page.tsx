@@ -58,7 +58,6 @@ const moveTranslator = (initialpos: number[],move: string[]) => {
       pos = [pos[0]+1,pos[1]]
     moveList.push(pos)
   })
-  console.log(moveList)
   return moveList
 }
 
@@ -74,7 +73,7 @@ export default function PathFinder() {
   const [result, setResult] = useState<string[]>([])
   const [totalNodes, setTotalNodes] = useState<number>(0)
   const [traversedNodes, setTraversedNodes] = useState<number[][]>([])
-  const [delay, setDelay] = useState(200);
+  const [delay, setDelay] = useState(60);
   const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
 
@@ -108,7 +107,6 @@ export default function PathFinder() {
   }
 
   useEffect(() => {
-    console.log(startCell)
     if (drawPath && path.length > 0) {
       let currentIndex = 0;
   
@@ -198,7 +196,6 @@ export default function PathFinder() {
       const cell = newGrid[y][x]
       
       if (currentType === 'start') {
-        console.log (x + " " + y)
         // Remove previous start cell if exists
         if(cell.type === 'start'){
           cell.type = 'empty'
@@ -341,18 +338,18 @@ export default function PathFinder() {
           )}
         </div>
       </div>
-      <div>
-      <GridUploader 
-        setGrid={setGrid} 
-        setRows={setSizeY} 
-        setColumns={setSizeX} 
-        setGoalCell={setGoalCell} 
-        setStartCell={setStartCell} 
-      />
-      <PredefinedMap 
-        onMapClick={onMapClick} 
+      <div className='flex flex-col p-3 gap-y-2 h-screen w-1/5'>
+        <GridUploader 
+          setGrid={setGrid} 
+          setRows={setSizeY} 
+          setColumns={setSizeX} 
+          setGoalCell={setGoalCell} 
+          setStartCell={setStartCell} 
         />
-        </div>
+        <PredefinedMap 
+          onMapClick={onMapClick}
+          />
+      </div>
     </div>
   )
 }

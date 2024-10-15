@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Input } from "./ui/input";
 
 interface Cell {
   type: 'empty' | 'start' | 'goal' | 'wall';
@@ -99,8 +99,6 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
   
 
   return (
-    <div>
-      <input type="file" accept=".txt" onChange={handleFileUpload} />
-    </div>
+    <Input type="file" onChange={handleFileUpload} />
   );
 }
