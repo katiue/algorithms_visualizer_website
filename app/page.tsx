@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import api from "@/components/api"
+import ResultBar from '@/components/result_bar'
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
 
@@ -54,78 +55,99 @@ export default function PathFinder() {
   const [algorithm, setAlgorithm] = useState<string>('bfs')
   const [startCell, setStartCell] = useState<Cell | null>(null)
   const [goalCell, setGoalCell] = useState<Cell[]>([])
-  const [sizex, setSizeX] = useState<number>(0)
-  const [sizey, setSizeY] = useState<number>(0)
+  const [sizex, setSizeX] = useState<number>(4)
+  const [sizey, setSizeY] = useState<number>(4)
   const [grid, setGrid] = useState<Cell[][]>([])
   const [result, setResult] = useState<string[]>([])
   const [totalNodes, setTotalNodes] = useState<number>(0)
   const [traversedNodes, setTraversedNodes] = useState<number[][]>([])
   const [delay, setDelay] = useState(200);
+  const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
 
+  const Reset = () => {
+    const newGrid = grid.map(row => row.map(cell => {
+      if (cell.type === 'traversed' || cell.type === 'path') {
+        cell.type = 'empty'
+      }
+      return cell
+    }))
+    setGrid(newGrid)
+    setResult([])
+    setTotalNodes(0)
+    setDrawPath(false)
+    setPath([])
+    setTraversedNodes([])
+  }
+
   useEffect(() => {
-    if (traversedNodes.length > 0) {
+    if (drawPath && path.length > 0) {
       let currentIndex = 0;
   
       const intervalId = setInterval(() => {
-        // Process the current node
-        if (currentIndex < traversedNodes.length) {
-          const node = traversedNodes[currentIndex];
-          setGrid(prevGrid => {
+        if (currentIndex < path.length) {
+          const node = path[currentIndex];
+          setGrid((prevGrid) => {
             const newGrid = [...prevGrid];
             const cell = newGrid[node[1]][node[0]];
   
             // Update cell type
-            if (cell.type === 'empty') {
-              cell.type = 'path';
+            if (cell.type === "traversed") {
+              cell.type = "path";
             }
             return newGrid;
           });
   
-          currentIndex++; // Increment the current index
+          currentIndex++;
         } else {
-          setDrawPath(true);
           clearInterval(intervalId); // Clear the interval once all nodes are processed
         }
-      }, delay);
-      return () => 
-      {
-        setDrawPath(true);
-        clearInterval(intervalId);
-      }}}, [drawPath])
-
-  const drawNodes = () =>{
+      }, 100);
   
-    if (traversedNodes.length > 0) {
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
+  }, [drawPath]); // Also depend on traversedNodes and delay
+  
+  useEffect(() => {
+    if (traversedNodes && traversedNodes.length > 0) {
       let currentIndex = 0;
   
       const intervalId = setInterval(() => {
-        // Process the current node
         if (currentIndex < traversedNodes.length) {
           const node = traversedNodes[currentIndex];
-          setGrid(prevGrid => {
+          setGrid((prevGrid) => {
             const newGrid = [...prevGrid];
             const cell = newGrid[node[1]][node[0]];
   
             // Update cell type
-            if (cell.type === 'empty') {
-              cell.type = 'traversed';
+            if (cell.type === "empty") {
+              cell.type = "traversed";
             }
             return newGrid;
           });
   
-          currentIndex++; // Increment the current index
-        } else {
-          setDrawPath(true);
-          clearInterval(intervalId); // Clear the interval once all nodes are processed
+          currentIndex++;
+  
+          // Trigger the path drawing when we reach the last node
+          if (currentIndex === traversedNodes.length) {
+            clearInterval(intervalId);
+            // Ensure the drawPath is set AFTER this is finished
+            setDrawPath(true); // Triggers the first useEffect
+            if (startCell) {
+              setPath(moveTranslator([startCell.y, startCell.x], result));
+            }
+          }
         }
       }, delay);
-      return () => 
-      {
-        setDrawPath(true);
+  
+      return () => {
         clearInterval(intervalId);
-      }}}
-
+      };
+    }
+  }, [traversedNodes, startCell, result, delay]); // Also depend on these values
+  
   useEffect(() => {
     const newGrid = Array(Math.max(sizex,4)).fill(null).map((_, x) =>
       Array(Math.max(sizey,4)).fill(null).map((_, y) => ({ type: 'empty' as CellType, x, y }))
@@ -168,6 +190,14 @@ export default function PathFinder() {
   }
 
   const handleStart = () => {
+    if (!startCell) {
+      alert('Please select a start cell')
+      return
+    }
+    if(goalCell.length === 0){
+      alert('Please select a goal cell')
+      return
+    }
     const getResult = async () => {
       const response = await api.post('/getResult',{
         algorithm: algorithm,
@@ -176,13 +206,15 @@ export default function PathFinder() {
         grid: transformGrid(grid)
       })
       if (response.status === 200) {
-        setResult(response.data.path)
-        setTotalNodes(response.data.totalNodes)
-        setTraversedNodes(response.data.traversed)
-        if (startCell)
-          moveTranslator([startCell.y, startCell.x], response.data.path);
-        drawNodes()
+        if(response.data.error){
+          alert('Error: ' + response.data.error)
         }
+        else{
+          setResult(response.data.path)
+          setTotalNodes(response.data.total_nodes)
+          setTraversedNodes(response.data.traversed)
+        }
+      }
       else {
         alert('Error' + response.data)
     }
@@ -218,11 +250,13 @@ export default function PathFinder() {
           <h2>X size:</h2>
           <Input
             type="number"
+            defaultValue={sizex}
             onChange = {(e) => setSizeX(Number(e.target.value))}
             />
           <h2>Y size:</h2>
           <Input
             type="number"
+            defaultValue={sizey}
             onChange = {(e) => setSizeY(Number(e.target.value))}
             />
         </div>
@@ -237,14 +271,17 @@ export default function PathFinder() {
               <SelectItem value="dfs">Depth-First Search</SelectItem>
               <SelectItem value="astar">A* Search</SelectItem>
               <SelectItem value="gbfs">Greedy Best-First Search</SelectItem>
-              <SelectItem value="dfsb">DFS Bidirectioinal Search</SelectItem>
+              <SelectItem value="bdfs">DFS Bidirectioinal Search</SelectItem>
               <SelectItem value="ida">IDA* Search</SelectItem>
             </SelectContent>
           </Select>
 
           <Button onClick={handleStart} className='w-full'>Start</Button>
         </div>
+
+        <Button onClick={Reset} className='w-full'>Reset</Button>
       </div>
+      <ResultBar result={result} totalNodes={totalNodes} />
       <div className="grid gap-0 border border-gray-300">
         {grid.map((row, y) =>
         <div key={y} className="flex">
