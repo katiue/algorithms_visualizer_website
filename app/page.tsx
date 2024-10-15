@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import api from "@/components/api"
 import ResultBar from '@/components/result_bar'
+import ToolsBar from '@/components/toolsBar'
+import PredefinedMap from '@/components/predefinedMaps'
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
 
@@ -15,13 +15,24 @@ interface Cell {
   y: number
 }
 
+interface GridProps {
+  sizex: number
+  sizey: number
+  grid: Cell[][]
+}
+
 const transformGrid = (grid: Cell[][]) => {
-  let newGrid: number[][] = Array(grid[0].length).fill(null).map(() => Array(grid.length).fill(0))
-  grid.map(row => row.map(cell => {
-    if (cell.type === 'wall') {
-      newGrid[cell.y][cell.x] = 1
-    }}))
-  return(newGrid)
+  let newGrid: number[][] = Array.from({ length: grid[0].length }, () => Array(grid.length).fill(0));
+  
+  grid.forEach((row, y) => {
+    row.forEach((cell ,x)  => {
+      if (cell.type === 'wall') {
+        newGrid[x][y] = 1;
+      }
+    });
+  });
+  
+  return newGrid;
 }
 
 const getGoalState = (goalCell: Cell[]) => {
@@ -65,6 +76,20 @@ export default function PathFinder() {
   const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
 
+  const onMapClick = (props: GridProps) => {
+    setResult([]);
+    setTotalNodes(0);
+    setDrawPath(false);
+    setPath([]);
+    setTraversedNodes([]);
+    setStartCell(null);
+    setGoalCell([]);
+
+    setGrid(props.grid);
+    setSizeX(props.sizex);
+    setSizeY(props.sizey);
+  };
+  
   const Reset = () => {
     const newGrid = grid.map(row => row.map(cell => {
       if (cell.type === 'traversed' || cell.type === 'path') {
@@ -147,19 +172,28 @@ export default function PathFinder() {
       };
     }
   }, [traversedNodes, startCell, result, delay]); // Also depend on these values
-  
-  useEffect(() => {
-    const newGrid = Array(Math.max(sizex,4)).fill(null).map((_, x) =>
-      Array(Math.max(sizey,4)).fill(null).map((_, y) => ({ type: 'empty' as CellType, x, y }))
-    )
-    setGrid(newGrid)
-  }, [sizex, sizey])
 
+  useEffect(() => {
+    setGrid(prevGrid => {
+      const newGrid = Array(sizey).fill(null).map((_, y) =>
+        Array(sizex).fill(null).map((_, x) => {
+          // Check if the cell already exists in the previous grid
+          if (prevGrid[y] && prevGrid[y][x]) {
+            return prevGrid[y][x];
+          }
+          // Otherwise, return an empty cell or the corresponding cell from the predefined template
+          return { type: 'empty' as CellType, x, y };
+        })
+      );
+      return newGrid;
+    });
+  }, [sizex, sizey]);
+  
   const handleCellClick = (x: number, y: number) => {
     setGrid(prevGrid => {
       const newGrid = [...prevGrid]
       const cell = newGrid[y][x]
-
+      
       if (currentType === 'start') {
         // Remove previous start cell if exists
         if(cell.type === 'start'){
@@ -172,17 +206,40 @@ export default function PathFinder() {
           setStartCell(cell)
           cell.type = 'start'
         } 
-      } else {
-        if(currentType === cell.type){
-          if (currentType === 'goal') {
-            setGoalCell(goalCell ? goalCell.filter(cell => !(cell.x === x && cell.y === y)) : [])
-          }
+      } 
+      if (currentType === 'wall') {
+        if(cell.type === 'wall'){
           cell.type = 'empty'
-        } else {
-          if (currentType === 'goal') {
-            setGoalCell([...(goalCell || []), { x, y, type: 'goal' }])
-          }
-          cell.type = currentType
+        }
+        else if (cell.type === 'goal') {
+          setGoalCell(goalCell.filter(goal => goal.x !== x || goal.y !== y))
+          cell.type = 'wall'
+        }
+        else if (cell.type === 'start') {
+          setStartCell(null)
+          cell.type = 'wall'
+        }
+        else {
+          cell.type = 'wall'
+        }
+      }
+      if(currentType === 'goal'){
+        if(cell.type === 'goal'){
+          setGoalCell(goalCell.filter(goal => goal.x !== x || goal.y !== y))
+          cell.type = 'empty'
+        }
+        else if (cell.type === 'wall') {
+          cell.type = 'goal'
+          setGoalCell([...goalCell, cell])
+        }
+        else if (cell.type === 'start') {
+          setStartCell(null)
+          cell.type = 'goal'
+          setGoalCell([...goalCell, cell])
+        }
+        else {
+          cell.type = 'goal'
+          setGoalCell([...goalCell, cell])
         }
       }
       return newGrid
@@ -190,6 +247,7 @@ export default function PathFinder() {
   }
 
   const handleStart = () => {
+    Reset()
     if (!startCell) {
       alert('Please select a start cell')
       return
@@ -222,71 +280,45 @@ export default function PathFinder() {
   getResult()
   }
   return (
-    <div className="flex flex-col items-center p-4 space-y-4">
-      {/* Button bar */}
-      <div className="flex space-x-4 mb-4">
-        <Button
-          onClick={() => setCurrentType('wall')}
-          variant={currentType === 'wall' ? 'default' : 'outline'}
-        >
-          Wall
-        </Button>
-        <Button
-          onClick={() => setCurrentType('goal')}
-          variant={currentType === 'goal' ? 'default' : 'outline'}
-        >
-          Goal
-        </Button>
-        <Button
-          onClick={() => setCurrentType('start')}
-          variant={currentType === 'start' ? 'default' : 'outline'}
-        >
-          Start
-        </Button>
-      </div>
-      <div className='flex gap-5'>
-        {/* Size input */}
-        <div>
-          <h2>X size:</h2>
-          <Input
-            type="number"
-            defaultValue={sizex}
-            onChange = {(e) => setSizeX(Number(e.target.value))}
-            />
-          <h2>Y size:</h2>
-          <Input
-            type="number"
-            defaultValue={sizey}
-            onChange = {(e) => setSizeY(Number(e.target.value))}
-            />
+    <div className='flex justify-between'>
+      <div></div>
+      <div className="flex flex-col items-center p-4 space-y-4 overflow-auto">
+        {/* Button bar */}
+        <div className="flex space-x-4 mb-4">
+          <Button
+            onClick={() => setCurrentType('wall')}
+            variant={currentType === 'wall' ? 'default' : 'outline'}
+          >
+            Wall
+          </Button>
+          <Button
+            onClick={() => setCurrentType('goal')}
+            variant={currentType === 'goal' ? 'default' : 'outline'}
+          >
+            Goal
+          </Button>
+          <Button
+            onClick={() => setCurrentType('start')}
+            variant={currentType === 'start' ? 'default' : 'outline'}
+          >
+            Start
+          </Button>
         </div>
-
-        <div className="flex flex-col items-center space-y-5 justify-end">
-          <Select value={algorithm} onValueChange={setAlgorithm}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select algorithm" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="bfs">Breadth-First Search</SelectItem>
-              <SelectItem value="dfs">Depth-First Search</SelectItem>
-              <SelectItem value="astar">A* Search</SelectItem>
-              <SelectItem value="gbfs">Greedy Best-First Search</SelectItem>
-              <SelectItem value="bdfs">DFS Bidirectioinal Search</SelectItem>
-              <SelectItem value="ida">IDA* Search</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={handleStart} className='w-full'>Start</Button>
-        </div>
-
-        <Button onClick={Reset} className='w-full'>Reset</Button>
-      </div>
-      <ResultBar result={result} totalNodes={totalNodes} />
-      <div className="grid gap-0 border border-gray-300">
-        {grid.map((row, y) =>
-        <div key={y} className="flex">
-          {row.map((cell, x) => (
-            <div
+        <ToolsBar
+          sizex={sizex}
+          sizey={sizey}
+          setSizeX={setSizeX}
+          setSizeY={setSizeY}
+          algorithm={algorithm}
+          setAlgorithm={setAlgorithm}
+          handleStart={handleStart}
+        />
+        <ResultBar result={result} totalNodes={totalNodes} />
+        <div className="grid gap-0 border border-gray-300 h-fit">
+          {grid.map((row, y) =>
+          <div key={y} className="flex">
+            {row.map((cell, x) => (
+              <div
               key={`${x}-${y}`}
               className={`w-6 h-6 border border-gray-200 cursor-pointer ${
                 cell.type === 'wall' ? 'bg-gray-500' :
@@ -296,12 +328,13 @@ export default function PathFinder() {
                 cell.type === 'path' ? 'bg-yellow-500' : ''
               }`}
               onClick={() => handleCellClick(x, y)}
-            />
-          ))}
+              />
+            ))}
+          </div>
+          )}
         </div>
-        )}
       </div>
-
+      <PredefinedMap onMapClick={onMapClick} />
     </div>
   )
 }
