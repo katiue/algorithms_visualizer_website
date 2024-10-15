@@ -202,7 +202,14 @@ export default function PathFinder() {
         if(cell.type === 'start'){
           cell.type = 'empty'
           setStartCell(null)
-        } else {
+        } else if(cell.type === 'goal'){
+          setGoalCell(goalCell.filter(goal => goal.x !== x || goal.y !== y))
+          cell.type = 'start'
+          if (startCell) {
+            startCell.type = 'empty'
+          }
+          setStartCell(cell)
+        }else {
           if (startCell) {
             startCell.type = 'empty'
           }
