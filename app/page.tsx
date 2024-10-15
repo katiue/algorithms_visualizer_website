@@ -57,6 +57,7 @@ const moveTranslator = (initialpos: number[],move: string[]) => {
       pos = [pos[0]+1,pos[1]]
     moveList.push(pos)
   })
+  console.log(moveList)
   return moveList
 }
 
@@ -106,6 +107,7 @@ export default function PathFinder() {
   }
 
   useEffect(() => {
+    console.log(startCell)
     if (drawPath && path.length > 0) {
       let currentIndex = 0;
   
@@ -161,7 +163,7 @@ export default function PathFinder() {
             // Ensure the drawPath is set AFTER this is finished
             setDrawPath(true); // Triggers the first useEffect
             if (startCell) {
-              setPath(moveTranslator([startCell.y, startCell.x], result));
+              setPath(moveTranslator([startCell.x, startCell.y], result));
             }
           }
         }
@@ -195,6 +197,7 @@ export default function PathFinder() {
       const cell = newGrid[y][x]
       
       if (currentType === 'start') {
+        console.log (x + " " + y)
         // Remove previous start cell if exists
         if(cell.type === 'start'){
           cell.type = 'empty'
@@ -228,10 +231,6 @@ export default function PathFinder() {
           setGoalCell(goalCell.filter(goal => goal.x !== x || goal.y !== y))
           cell.type = 'empty'
         }
-        else if (cell.type === 'wall') {
-          cell.type = 'goal'
-          setGoalCell([...goalCell, cell])
-        }
         else if (cell.type === 'start') {
           setStartCell(null)
           cell.type = 'goal'
@@ -259,7 +258,7 @@ export default function PathFinder() {
     const getResult = async () => {
       const response = await api.post('/getResult',{
         algorithm: algorithm,
-        initialstate: [startCell?.y, startCell?.x],
+        initialstate: [startCell?.x, startCell?.y],
         goalstate: getGoalState(goalCell),
         grid: transformGrid(grid)
       })
