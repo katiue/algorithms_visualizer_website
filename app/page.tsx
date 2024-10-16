@@ -95,7 +95,7 @@ export default function PathFinder() {
      }}))
         if(startCell)
         moveTranslator([startCell.x, startCell.y], result[emphasePath].path).forEach((move) => {
-          if(newGrid[move[1]][move[0]].type === 'path')
+          if(newGrid[move[1]][move[0]].type !== 'goal' || newGrid[move[1]][move[0]].type !== 'start')
             newGrid[move[1]][move[0]].type ='glow'
       })
       return newGrid
@@ -386,7 +386,7 @@ export default function PathFinder() {
           Reset={Reset}
         />
         <ResultBar result={result[displayingPath]?.path} totalNodes={totalNodes} />
-        <div className="grid gap-0 border border-gray-300">
+        <div className="flex flex-col gap-0 border border-gray-300">
           {grid.map((row, y) =>
           <div key={y} className="flex">
             {row.map((cell, x) => (
