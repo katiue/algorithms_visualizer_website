@@ -177,6 +177,9 @@ export default function PathFinder() {
         clearInterval(intervalId);
       };
     }
+    else if (drawPath && path.length === 0) {
+      setDisplayingPath(displayingPath + 1); // Increment to the next path
+    }
   }, [drawPath, path, displayingPath]);
   
   // This effect triggers drawing whenever the `displayingPath` is updated
@@ -333,6 +336,7 @@ export default function PathFinder() {
           alert('Error: ' + response.data.error)
         }
         else{
+          console.log(response.data)
           setResult(response.data.path)
           setTotalNodes(response.data.total_nodes)
           setTraversedNodes(response.data.traversed)
