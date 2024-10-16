@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, use } from 'react'
 import { Button } from "@/components/ui/button"
 import api from "@/components/api"
 import ResultBar from '@/components/result_bar'
@@ -8,7 +8,7 @@ import ToolsBar from '@/components/toolsBar'
 import PredefinedMap from '@/components/predefinedMaps'
 import GridUploader from '@/components/uploadFile'
 
-type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
+type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path' | 'glow'
 
 interface ResultModel{
   path: string[],
@@ -82,6 +82,23 @@ export default function PathFinder() {
   const [displayingPath, setDisplayingPath] = useState(0);
   const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
+  const [emphasePath, setEmphasePath] = useState(-1);
+
+  useEffect(() => {
+    setGrid(prevGrid => {
+      const newGrid = [...prevGrid]
+      newGrid.map(row => row.map(cell => {
+        if (cell.type === 'glow') {
+          cell.type = 'path'
+     }}))
+        if(startCell)
+        moveTranslator([startCell.x, startCell.y], result[emphasePath].path).forEach((move) => {
+          if(newGrid[move[1]][move[0]].type === 'path')
+            newGrid[move[1]][move[0]].type ='glow'
+      })
+      return newGrid
+  })
+  }, [emphasePath])
 
   const onMapClick = (props: GridProps) => {
     setResult([]);
@@ -221,6 +238,15 @@ export default function PathFinder() {
   }, [sizex, sizey]);
   
   const handleCellClick = (x: number, y: number) => {
+    if(traversedNodes.length > 0){
+      const choosenPath = goalCell.findIndex(goal => goal.x === x && goal.y === y)
+      if(choosenPath === emphasePath){
+        setEmphasePath(-1)
+        return
+      }
+      setEmphasePath(goalCell.findIndex(goal => goal.x === x && goal.y === y))
+      return
+    }
     setGrid(prevGrid => {
       const newGrid = [...prevGrid]
       const cell = newGrid[y][x]
@@ -317,7 +343,7 @@ export default function PathFinder() {
   return (
     <div className='flex justify-between'>
       <div></div>
-      <div className="flex flex-col items-center p-4 space-y-4 overflow-auto">
+      <div className="flex flex-col items-center p-4 space-y-4 overflow-auto h-screen">
         {/* Button bar */}
         <div className="flex space-x-4 mb-4">
           <Button
@@ -347,20 +373,22 @@ export default function PathFinder() {
           algorithm={algorithm}
           setAlgorithm={setAlgorithm}
           handleStart={handleStart}
+          Reset={Reset}
         />
         <ResultBar result={result[displayingPath]?.path} totalNodes={totalNodes} />
-        <div className="grid gap-0 border border-gray-300 h-fit">
+        <div className="grid gap-0 border border-gray-300">
           {grid.map((row, y) =>
           <div key={y} className="flex">
             {row.map((cell, x) => (
               <div
               key={`${x}-${y}`}
-              className={`w-6 h-6 border border-gray-200 cursor-pointer ${
+              className={`w-6 h-6 border border-gray-200 cursor-pointer ${emphasePath !== -1 && cell.type != 'glow' ? "opacity-50": "" } ${
                 cell.type === 'wall' ? 'bg-gray-500' :
                 cell.type === 'goal' ? 'bg-green-500' :
                 cell.type === 'start' ? 'bg-red-500' : 
                 cell.type === 'traversed' ? 'bg-blue-500' : 
-                cell.type === 'path' ? 'bg-yellow-500' : ''
+                cell.type === 'path' ? 'bg-yellow-500' : 
+                cell.type === 'glow' ? 'bg-purple-500' : ''
               }`}
               onClick={() => handleCellClick(x, y)}
               />

@@ -11,10 +11,11 @@ interface ToolsBarProps {
     algorithm: string;
     setAlgorithm: (value: string) => void;
     handleStart: () => void;
+    Reset: () => void;
 }
 
 const ToolsBar: FC<ToolsBarProps> = ({
-    sizex, sizey, setSizeX, setSizeY, algorithm, setAlgorithm, handleStart
+    sizex, sizey, setSizeX, setSizeY, algorithm, setAlgorithm, handleStart, Reset
 }) => {
     return (
         <div className='flex gap-5'>
@@ -51,6 +52,7 @@ const ToolsBar: FC<ToolsBarProps> = ({
 
           <Button onClick={handleStart} className='w-full'>Start</Button>
         </div>
+        <Button onClick={Reset} className='w-full h-full'>Reset</Button>
       </div>
 )}
 

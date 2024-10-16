@@ -118,7 +118,7 @@ export default function PredefinedMap({ onMapClick }: MapProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-y-2 h-5/6 overflow-auto">
+    <div className="flex flex-col gap-y-2 h-full overflow-auto">
       {maps.map((map, index) => (
         <Card key={index} onClick={() => onMapClick(map)}>
           <CardHeader>

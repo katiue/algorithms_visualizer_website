@@ -14,7 +14,7 @@ export default function ResultBar({
         Total nodes go through:
         <span className="font-bold"> {totalNodes}</span>
       </div>
-      <div className="flex items-center justify-center w-1/2 h-1/2 gap-x-2">
+      <div className="grid grid-cols-10 items-center justify-center w-full h-1/2 gap-x-2 overflow-y-auto">
         {result && result.map((res, index) => (
           <div key={index} className="text-xl">
             {res}
