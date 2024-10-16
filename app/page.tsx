@@ -10,6 +10,12 @@ import GridUploader from '@/components/uploadFile'
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path'
 
+interface ResultModel{
+  path: string[],
+  traversed: number[][],
+  total_nodes: number,
+}
+
 interface Cell {
   type: CellType
   x: number
@@ -61,7 +67,6 @@ const moveTranslator = (initialpos: number[],move: string[]) => {
   return moveList
 }
 
-
 export default function PathFinder() {
   const [currentType, setCurrentType] = useState<CellType>('wall')
   const [algorithm, setAlgorithm] = useState<string>('bfs')
@@ -70,10 +75,11 @@ export default function PathFinder() {
   const [sizex, setSizeX] = useState<number>(4)
   const [sizey, setSizeY] = useState<number>(4)
   const [grid, setGrid] = useState<Cell[][]>([])
-  const [result, setResult] = useState<string[]>([])
+  const [result, setResult] = useState<ResultModel[]>([])
   const [totalNodes, setTotalNodes] = useState<number>(0)
   const [traversedNodes, setTraversedNodes] = useState<number[][]>([])
-  const [delay, setDelay] = useState(60);
+  const [delay, setDelay] = useState(10);
+  const [displayingPath, setDisplayingPath] = useState(0);
   const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
 
@@ -85,7 +91,17 @@ export default function PathFinder() {
     setTraversedNodes([]);
     setStartCell(null);
     setGoalCell([]);
+    setDisplayingPath(0);
 
+    props.grid.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell.type === 'start') {
+          setStartCell(cell);
+        } else if (cell.type === 'goal') {
+          setGoalCell([...goalCell, cell]);
+        }
+      });
+    })
     setGrid(props.grid);
     setSizeX(props.sizex);
     setSizeY(props.sizey);
@@ -104,8 +120,8 @@ export default function PathFinder() {
     setDrawPath(false)
     setPath([])
     setTraversedNodes([])
+    setDisplayingPath(0)
   }
-
   useEffect(() => {
     if (drawPath && path.length > 0) {
       let currentIndex = 0;
@@ -127,6 +143,11 @@ export default function PathFinder() {
           currentIndex++;
         } else {
           clearInterval(intervalId); // Clear the interval once all nodes are processed
+  
+          if (displayingPath < result.length - 1) {
+            setDrawPath(false); // Stop drawing current path
+            setDisplayingPath(displayingPath + 1); // Increment to the next path
+          }
         }
       }, 100);
   
@@ -134,7 +155,16 @@ export default function PathFinder() {
         clearInterval(intervalId);
       };
     }
-  }, [drawPath]); // Also depend on traversedNodes and delay
+  }, [drawPath, path, displayingPath]);
+  
+  // This effect triggers drawing whenever the `displayingPath` is updated
+  useEffect(() => {
+    if (displayingPath < result.length) {
+      if(startCell)
+      setPath(moveTranslator([startCell.x, startCell.y], result[displayingPath].path));
+      setDrawPath(true); // Start drawing the updated path
+    }
+  }, [displayingPath]);
   
   useEffect(() => {
     if (traversedNodes && traversedNodes.length > 0) {
@@ -162,7 +192,7 @@ export default function PathFinder() {
             // Ensure the drawPath is set AFTER this is finished
             setDrawPath(true); // Triggers the first useEffect
             if (startCell) {
-              setPath(moveTranslator([startCell.x, startCell.y], result));
+              setPath(moveTranslator([startCell.x, startCell.y], result[displayingPath].path));
             }
           }
         }
@@ -283,6 +313,7 @@ export default function PathFinder() {
   }
   getResult()
   }
+
   return (
     <div className='flex justify-between'>
       <div></div>
@@ -317,7 +348,7 @@ export default function PathFinder() {
           setAlgorithm={setAlgorithm}
           handleStart={handleStart}
         />
-        <ResultBar result={result} totalNodes={totalNodes} />
+        <ResultBar result={result[displayingPath]?.path} totalNodes={totalNodes} />
         <div className="grid gap-0 border border-gray-300 h-fit">
           {grid.map((row, y) =>
           <div key={y} className="flex">

@@ -15,7 +15,7 @@ export default function ResultBar({
         <span className="font-bold"> {totalNodes}</span>
       </div>
       <div className="flex items-center justify-center w-1/2 h-1/2 gap-x-2">
-        {result.map((res, index) => (
+        {result && result.map((res, index) => (
           <div key={index} className="text-xl">
             {res}
           </div>

@@ -44,8 +44,8 @@ const ToolsBar: FC<ToolsBarProps> = ({
               <SelectItem value="dfs">Depth-First Search</SelectItem>
               <SelectItem value="astar">A* Search</SelectItem>
               <SelectItem value="gbfs">Greedy Best-First Search</SelectItem>
-              <SelectItem value="bdfs">DFS Bidirectioinal Search</SelectItem>
-              <SelectItem value="ida">IDA* Search</SelectItem>
+              <SelectItem value="cus1">Custom 1</SelectItem>
+              <SelectItem value="cus2">Custom 2</SelectItem>
             </SelectContent>
           </Select>
 
