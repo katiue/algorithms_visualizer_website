@@ -178,6 +178,7 @@ export default function PathFinder() {
       };
     }
     else if (drawPath && path.length === 0) {
+      setDrawPath(false); // Stop drawing current path
       setDisplayingPath(displayingPath + 1); // Increment to the next path
     }
   }, [drawPath, path, displayingPath]);
