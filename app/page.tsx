@@ -85,6 +85,8 @@ export default function PathFinder() {
   const [emphasePath, setEmphasePath] = useState(-1);
 
   useEffect(() => {
+    if(emphasePath === -1)
+      return
     setGrid(prevGrid => {
       const newGrid = [...prevGrid]
       newGrid.map(row => row.map(cell => {
@@ -109,6 +111,7 @@ export default function PathFinder() {
     setStartCell(null);
     setGoalCell([]);
     setDisplayingPath(0);
+    setEmphasePath(-1);
 
     props.grid.forEach((row, y) => {
       row.forEach((cell, x) => {
@@ -126,7 +129,7 @@ export default function PathFinder() {
   
   const Reset = () => {
     const newGrid = grid.map(row => row.map(cell => {
-      if (cell.type === 'traversed' || cell.type === 'path') {
+      if (cell.type === 'traversed' || cell.type === 'path' || cell.type === 'glow') {
         cell.type = 'empty'
       }
       return cell
@@ -138,7 +141,9 @@ export default function PathFinder() {
     setPath([])
     setTraversedNodes([])
     setDisplayingPath(0)
+    setEmphasePath(-1)
   }
+
   useEffect(() => {
     if (drawPath && path.length > 0) {
       let currentIndex = 0;
@@ -342,7 +347,7 @@ export default function PathFinder() {
 
   return (
     <div className='flex justify-between'>
-      <div></div>
+      <div className='w-1/5 h-full bg-green-500 overflow-y-auto'></div>
       <div className="flex flex-col items-center p-4 space-y-4 overflow-auto h-screen">
         {/* Button bar */}
         <div className="flex space-x-4 mb-4">
