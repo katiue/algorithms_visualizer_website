@@ -144,6 +144,8 @@ export default function PredefinedMap({ onMapClick }: MapProps) {
                           ? 'bg-blue-500'
                           : cell.type === 'path'
                           ? 'bg-yellow-500'
+                          : typeof cell.type === 'number'
+                          ? 'bg-purple-500'
                           : ''
                       }`}
                     />

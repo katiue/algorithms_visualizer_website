@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import api from "@/components/api"
 import ResultBar from '@/components/result_bar'
@@ -9,7 +10,7 @@ import PredefinedMap from '@/components/predefinedMaps'
 import GridUploader from '@/components/uploadFile'
 import GridForm from '@/components/GridForm'
 import AlgorithmComparison from '@/components/RightSection'
-import { set } from 'react-hook-form'
+import LoadingScreen from '@/components/LoadingScreen'
 
 type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path' | number
 
@@ -71,24 +72,37 @@ const moveTranslator = (initialpos: number[],move: string[]) => {
   return moveList
 }
 
+const getCellColor = (cellType: CellType) => {
+  switch(cellType) {
+    case 'wall': return 'bg-gray-500'
+    case 'goal': return 'bg-green-500'
+    case 'start': return 'bg-red-500'
+    case 'traversed': return 'bg-blue-500'
+    case 'path': return 'bg-yellow-500'
+    case 'empty': return 'bg-white'
+    default: return 'bg-purple-500'
+  }
+}
+
 export default function PathFinder() {
-  const [currentType, setCurrentType] = useState<CellType>('wall')
-  const [algorithm, setAlgorithm] = useState<string>('bfs')
-  const [startCell, setStartCell] = useState<Cell | null>(null)
-  const [goalCell, setGoalCell] = useState<Cell[]>([])
-  const [sizex, setSizeX] = useState<number>(4)
-  const [sizey, setSizeY] = useState<number>(4)
-  const [grid, setGrid] = useState<Cell[][]>([])
-  const [result, setResult] = useState<ResultModel[]>([])
-  const [totalNodes, setTotalNodes] = useState<number>(0)
-  const [traversedNodes, setTraversedNodes] = useState<number[][]>([])
-  const [delay, setDelay] = useState(100);
+  const [reachablegoals, setReachableGoals] = useState<number[][]>([]);
+  const [traversedNodes, setTraversedNodes] = useState<number[][]>([]);
+  const [currentType, setCurrentType] = useState<CellType>('wall');
+  const [startCell, setStartCell] = useState<Cell | null>(null);
+  const [algorithm, setAlgorithm] = useState<string>('bfs');
+  const [result, setResult] = useState<ResultModel[]>([]);
+  const [totalNodes, setTotalNodes] = useState<number>(0);
   const [displayingPath, setDisplayingPath] = useState(0);
+  const [goalCell, setGoalCell] = useState<Cell[]>([]);
+  const [emphasePath, setEmphasePath] = useState(-1);
+  const [leftSection, setLeftSection] = useState(0);
   const [path, setPath] = useState<number[][]>([]);
   const [drawPath, setDrawPath] = useState(false);
-  const [emphasePath, setEmphasePath] = useState(-1);
-  const [leftSection, setLeftSection] = useState(0)
-  const [reachablegoals, setReachableGoals] = useState<number[][]>([])
+  const [fetching, setFetching] = useState(false);
+  const [grid, setGrid] = useState<Cell[][]>([]);
+  const [sizex, setSizeX] = useState<number>(4);
+  const [sizey, setSizeY] = useState<number>(4);
+  const [delay, setDelay] = useState(100);
   
   const changeLeftSection = (section: number) => {
     setLeftSection(section)
@@ -145,7 +159,22 @@ export default function PathFinder() {
         if(startCell)
         moveTranslator([startCell.x, startCell.y], result[emphasePath].path).forEach((move, index) => {
           if(newGrid[move[1]][move[0]].type !== 'goal' && newGrid[move[1]][move[0]].type !== 'start')
-            newGrid[move[1]][move[0]].type = index
+            switch(result[emphasePath].path[index + 1]){
+              case "UP":
+                newGrid[move[1]][move[0]].type = 1
+                break
+              case "DOWN":
+                newGrid[move[1]][move[0]].type = 2
+                break
+              case "LEFT":
+                newGrid[move[1]][move[0]].type = 3
+                break
+              case "RIGHT":
+                newGrid[move[1]][move[0]].type = 4
+                break
+              default:
+                newGrid[move[1]][move[0]].type = index
+            }
       })
       return newGrid
   })
@@ -383,12 +412,14 @@ export default function PathFinder() {
       return
     }
     const getResult = async () => {
+      setFetching(true)
       const response = await api.post('/getResult',{
         algorithm: algorithm,
         initialstate: [startCell?.x, startCell?.y],
         goalstate: getGoalState(goalCell),
         grid: transformGrid(grid)
       })
+      setFetching(false)
       if (response.status === 200) {
         if(response.data.error){
           alert('Error: ' + response.data.error)
@@ -416,13 +447,33 @@ export default function PathFinder() {
   }
 
   return (
-    <div className='flex justify-between'>
-      <div className='w-1/4 h-screen overflow-y-auto'>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className='flex justify-between'
+    >
+      <LoadingScreen isLoading={fetching}/>
+      <motion.div 
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className='w-1/4 h-screen overflow-y-auto'
+      >
         <AlgorithmComparison algorithm={algorithm}/>
-      </div>
-      <div className="flex flex-col items-center p-4 space-y-4 overflow-auto h-screen">
-        {/* Button bar */}
-        <div className="flex space-x-4 mb-4">
+      </motion.div>
+      <motion.div 
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        className="flex flex-col items-center p-4 space-y-4 overflow-auto h-screen"
+      >
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.3 }}
+          className="flex space-x-4 mb-4"
+        >
           <Button
             onClick={() => setCurrentType('wall')}
             variant={currentType === 'wall' ? 'default' : 'outline'}
@@ -441,7 +492,7 @@ export default function PathFinder() {
           >
             Start
           </Button>
-        </div>
+        </motion.div>
         <ToolsBar
           sizex={sizex}
           sizey={sizey}
@@ -456,55 +507,105 @@ export default function PathFinder() {
           changeLeftSection={changeLeftSection}
         />
         <ResultBar 
-          result={emphasePath != -1 ? result[emphasePath]?.path : result[displayingPath]?.path} 
+          result={emphasePath != -1 ? result[emphasePath] : result[displayingPath]} 
           totalNodes={totalNodes} 
           reachableGoals={reachablegoals}
         />
-        <div className="w-full h-full">
-          <div className="flex flex-col gap-0 border border-gray-300  min-w-max max-w-screen-sm w-fit">
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="w-full h-full"
+        >
+          <div className="flex flex-col gap-0 border border-gray-300 min-w-max max-w-screen-sm w-fit">
             {grid.map((row, y) =>
-            <div key={y} className="flex">
-              {row.map((cell, x) => (
-                <div
-                key={`${x}-${y}`}
-                className={`w-6 h-6 text-center border border-gray-200 cursor-pointer ${emphasePath !== -1 && typeof cell.type != "number" ? "opacity-50": "" } ${
-                  cell.type === 'wall' ? 'bg-gray-500' :
-                  cell.type === 'goal' ? 'bg-green-500' :
-                  cell.type === 'start' ? 'bg-red-500' : 
-                  cell.type === 'traversed' ? 'bg-blue-500' : 
-                  cell.type === 'path' ? 'bg-yellow-500' : 
-                  typeof cell.type === 'number' ? 'bg-purple-500' : ''
-                }`}
-                onClick={() => handleCellClick(x, y)}
-                >
-                  {typeof cell.type === 'number' ? cell.type : ''}
-                </div>
-              ))}
-            </div>
+              <div key={y} className="flex">
+                {row.map((cell, x) => (
+                  <motion.div
+                    key={`${x}-${y}`}
+                    initial={{ scale: 0 }}
+                    animate={{ 
+                      scale: 1,
+                      y: cell.type ? [0, -10, 0] : 0
+                    }}
+                    transition={{ 
+                      duration: 0.3, 
+                      delay: (x + y) * 0.01,
+                      y: { type: "spring", stiffness: 300, damping: 10 }
+                    }}
+                    className={`w-6 h-6 text-center border border-gray-200 cursor-pointer ${
+                      emphasePath !== -1 && typeof cell.type != "number" ? "opacity-50" : ""
+                    } ${getCellColor(cell.type)}`}
+                    onClick={() => handleCellClick(x, y)}
+                    whileHover={{ scale: 1.2, zIndex: 10 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        boxShadow: typeof cell.type === 'number' 
+                          ? '0 0 15px 5px rgba(147, 51, 234, 0.7)' 
+                          : 'none'
+                      }}
+                      transition={{ duration: 0.3 }}
+                      className="w-full h-full flex items-center justify-center"
+                    >
+                      {typeof cell.type === 'number' ? (() => {
+                        switch(cell.type) {
+                          case 1: return "↑";
+                          case 2: return "↓";
+                          case 3: return "←";
+                          case 4: return "→";
+                          default: return '';
+                        }
+                      })() : ''}
+                    </motion.div>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </div>
-        </div>
-      </div>
-      <div className='flex flex-col p-3 gap-y-2 h-screen w-1/4 overflow-y-auto'>
-        { leftSection === 0 &&
-          <PredefinedMap 
-          onMapClick={onMapClick}
-          />
-        }
-        { leftSection === 1 && 
-          <>
-            <GridUploader 
-            setGrid={setGrid}
-            setRows={setSizeY}
-            setColumns={setSizeX}
-            setGoalCell={setGoalCell}
-            setStartCell={setStartCell}
-            Reset={Reset}
-            />
-            <GridForm onSubmit={handleGridSubmit}/>
-          </>
-        }
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+      <motion.div 
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 1, duration: 0.5 }}
+        className='flex flex-col p-3 gap-y-2 h-screen w-1/4 overflow-y-auto'
+      >
+        <AnimatePresence mode="wait">
+          {leftSection === 0 && (
+            <motion.div
+              key="predefined-map"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <PredefinedMap onMapClick={onMapClick} />
+            </motion.div>
+          )}
+          {leftSection === 1 && (
+            <motion.div
+              key="grid-uploader"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <GridUploader 
+                setGrid={setGrid}
+                setRows={setSizeY}
+                setColumns={setSizeX}
+                setGoalCell={setGoalCell}
+                setStartCell={setStartCell}
+                Reset={Reset}
+              />
+              <GridForm onSubmit={handleGridSubmit}/>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   )
 }

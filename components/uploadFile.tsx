@@ -1,8 +1,15 @@
-import { Input } from "./ui/input";
+
+import React, { useState, useCallback } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { motion, AnimatePresence } from 'framer-motion'
+import { File, CheckCircle, XCircle } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { useState } from "react";
-import { Button } from "./ui/button";
 import { Download, InfoIcon, X } from "lucide-react";
+
+
+type CellType = 'empty' | 'start' | 'goal' | 'wall';
 
 interface Cell {
   type: 'empty' | 'start' | 'goal' | 'wall';
@@ -22,6 +29,48 @@ interface GridUploaderProps {
 export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell, setStartCell, Reset }: GridUploaderProps) {
   
   const [isRevealed, setIsRevealed] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
+  const [isHovered, setIsHovered] = useState(false)
+
+  const handleFileUpload = async (file: File) => {
+    Reset();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      parseFileContent(text);
+    };
+    reader.readAsText(file);
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const uploadedFile = acceptedFiles[0]
+    setFile(uploadedFile)
+    setUploadStatus('uploading')
+    try {
+      await handleFileUpload(uploadedFile)
+      setUploadStatus('success')
+    } catch (error) {
+      console.error('File upload failed:', error)
+      setUploadStatus('error')
+    }
+  }, [handleFileUpload])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop,
+    accept: {
+      'text/plain': ['.txt']
+    },
+    maxFiles: 1,
+    multiple: false
+  })
+
+  const resetUpload = () => {
+    setFile(null)
+    setUploadProgress(0)
+    setUploadStatus('idle')
+  }
 
   const handleReveal = () => {
     setIsRevealed(true)
@@ -47,19 +96,6 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
     // Clean up
     document.body.removeChild(link)
   }
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    Reset();
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        parseFileContent(text);
-      };
-      reader.readAsText(file);
-    }
-  };
 
   const parseFileContent = (content: string) => {
     const lines = content.split('\n').map(line => line.trim());
@@ -89,7 +125,7 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
   const generateGrid = (rows: number, cols: number, start: { startX: number, startY: number }, goals: { x: number, y: number }[], walls: { x: number, y: number, width: number, height: number }[]) => {
     // Initialize the grid
     setGoalCell(goals.map(goal => ({ type: 'goal', ...goal })));
-    setStartCell({ type: 'start', x: start.startX, y: start.startY });
+    setStartCell({ type: 'start' as CellType, x: start.startX, y: start.startY });
     const newGrid: Cell[][] = Array.from({ length: rows }, (_, y) =>
       Array.from({ length: cols }, (_, x) => ({ type: 'empty', x, y }))
     );
@@ -99,7 +135,9 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
   
     // Set start position if within bounds
     if (isInBounds(start.startX, start.startY)) {
-      newGrid[start.startY][start.startX].type = 'start'; // Correct order of accessing the grid
+      const cell = newGrid[start.startY][start.startX]; // Correct order of accessing the grid
+      cell.type = 'start' as CellType;
+      setStartCell(cell);
     } else {
       console.error(`Start position (${start.startX}, ${start.startY}) is out of bounds.`);
     }
@@ -136,7 +174,7 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
         <CardTitle>Upload Grid</CardTitle>
         <InfoIcon className="h-6 w-6 text-blue-500" onClick={handleReveal}/>
         {isRevealed && (
-        <Card className="absolute top-10">
+        <Card className="absolute top-10 z-40">
           <div className="flex items-center justify-end">
             <Button onClick={closeReveal} variant="ghost" className="w-fit">
               <X className="h-6 w-6" />
@@ -169,7 +207,94 @@ export default function GridUploader({ setGrid, setRows, setColumns, setGoalCell
       )}
       </CardHeader>
       <CardContent>
-        <Input type="file" onChange={handleFileUpload} />
+      <AnimatePresence mode="wait">
+        {uploadStatus === 'idle' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, height: 200 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0, 
+              height: isHovered ? 240 : 200 
+            }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center flex flex-col justify-center items-center"
+            {...getRootProps() as any}
+          >
+            <input {...getInputProps()} />
+            
+            {/* Image switching */}
+            <motion.img
+              src={isHovered ? "/cat-open.png" : "/cat-closed.png"}
+              alt="Dragon animation"
+              className="w-24 h-24 mb-4"
+              animate={{ scale: isHovered ? 1.1 : 1 }}
+              transition={{ duration: 0.2 }}
+            />
+
+            <motion.p 
+              className="mt-2 text-sm text-gray-600"
+              animate={{ fontSize: isHovered ? "1.1rem" : "0.875rem" }}
+            >
+              {isDragActive
+                ? "Drop the file here"
+                : "Drag 'n' drop a file here, or click to select a file"}
+            </motion.p>
+            <motion.p 
+              className="mt-1 text-xs text-gray-500"
+              animate={{ opacity: isHovered ? 1 : 0.7 }}
+            >
+              Supported file types: TXT
+            </motion.p>
+          </motion.div>
+        )}
+
+        {(uploadStatus === 'uploading' || uploadStatus === 'success' || uploadStatus === 'error') && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="border-2 border-gray-300 rounded-lg p-6"
+          >
+            <div className="flex items-center mb-4">
+              <File className="h-8 w-8 text-blue-500 mr-3" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {file?.name}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {file?.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                </p>
+              </div>
+              {uploadStatus === 'success' && (
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              )}
+              {uploadStatus === 'error' && (
+                <XCircle className="h-6 w-6 text-red-500" />
+              )}
+            </div>
+
+            {uploadStatus === 'uploading' && (
+              <Progress value={uploadProgress} className="w-full" />
+            )}
+
+            {uploadStatus === 'success' && (
+              <p className="text-sm text-green-600 mt-2">File uploaded successfully!</p>
+            )}
+
+            {uploadStatus === 'error' && (
+              <p className="text-sm text-red-600 mt-2">Error uploading file. Please try again.</p>
+            )}
+
+            <Button onClick={resetUpload} className="mt-4 w-full">
+              Upload Another File
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </CardContent>
     </>
   );
