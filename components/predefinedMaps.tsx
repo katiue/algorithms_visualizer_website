@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 
-type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path';
+type CellType = 'empty' | 'wall' | 'start' | 'goal' | 'traversed' | 'path' | number;
 
 interface Cell {
   type: CellType;
@@ -47,7 +47,7 @@ export default function PredefinedMap({ onMapClick }: MapProps) {
         sizey: 4,
         grid: [
           [
-            { type: 'empty' as CellType, x: 0, y: 0 },
+            { type: 'start' as CellType, x: 0, y: 0 },
             { type: 'empty' as CellType, x: 1, y: 0 },
             { type: 'wall' as CellType, x: 2, y: 0 },
             { type: 'wall' as CellType, x: 3, y: 0 },
@@ -62,7 +62,7 @@ export default function PredefinedMap({ onMapClick }: MapProps) {
             { type: 'empty' as CellType, x: 0, y: 2 },
             { type: 'wall' as CellType, x: 1, y: 2 },
             { type: 'empty' as CellType, x: 2, y: 2 },
-            { type: 'empty' as CellType, x: 3, y: 2 },
+            { type: 'goal' as CellType, x: 3, y: 2 },
           ],
           [
             { type: 'empty' as CellType, x: 0, y: 3 },
@@ -118,7 +118,7 @@ export default function PredefinedMap({ onMapClick }: MapProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-y-2 h-full overflow-auto">
+    <div className="flex flex-col gap-y-2 h-full">
       {maps.map((map, index) => (
         <Card key={index} onClick={() => onMapClick(map)}>
           <CardHeader>
